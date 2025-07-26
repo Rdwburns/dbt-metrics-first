@@ -1,0 +1,56 @@
+# dbt-metrics-first-embedded
+# A standalone dbt package for metrics-first semantic model development
+# Uses embedded Python compilation - no external dependencies required!
+
+name: 'dbt_metrics_first_embedded'
+version: '1.0.0'
+config-version: 2
+
+# This package provides macros and Python models for compilation
+model-paths: ["models"]
+analysis-paths: []
+test-paths: []
+seed-paths: []
+macro-paths: ["macros"]
+snapshot-paths: []
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Package configuration
+vars:
+  # Default settings for metrics-first compilation
+  dbt_metrics_first:
+    # Input directories to search for metrics-first YAML files
+    input_directories:
+      - "metrics"
+      - "semantic_models"
+      - "models/metrics"
+    
+    # Output directory for compiled semantic models
+    output_directory: "models"
+    
+    # File naming convention
+    compiled_file_suffix: "_semantic_models"
+    
+    # Validation settings
+    validate_schema: true
+    
+    # Logging settings
+    verbose_logging: false
+    show_compilation_details: true
+    
+    # Error handling
+    fail_on_compilation_error: true
+    fail_on_validation_error: true
+
+# Supported dbt versions (requires Python model support)
+require-dbt-version: ">=1.3.0"
+
+# No external package dependencies
+packages: []
+
+# Package profile
+profile: 'default'

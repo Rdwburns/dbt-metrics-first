@@ -1,0 +1,21 @@
+# Example packages.yml for installing dbt-metrics-first-embedded
+
+packages:
+  # Install the embedded dbt-metrics-first package
+  # This provides zero-dependency metrics compilation
+  - git: "https://github.com/yourusername/dbt-metrics-first-embedded.git"
+    revision: v1.0.0
+    
+  # Optional: Other dbt packages you might use
+  # - package: dbt-labs/dbt_utils
+  #   version: 1.1.1
+  
+  # - package: calogica/dbt_expectations
+  #   version: 0.10.1
+
+# After adding this file, run:
+# dbt deps
+#
+# Then configure your dbt_project.yml with:
+# on-run-start:
+#   - "{{ metrics_first_compile_embedded() }}"

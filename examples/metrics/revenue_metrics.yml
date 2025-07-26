@@ -1,0 +1,60 @@
+# Example metrics-first YAML for the embedded dbt package
+# This demonstrates the simplified syntax for defining business metrics
+
+version: 1
+
+metrics:
+  - name: total_revenue
+    description: "Total revenue from completed orders"
+    source: fct_orders
+    measure:
+      type: sum
+      column: order_total
+      filters:
+        - "order_status = 'completed'"
+    dimensions:
+      - name: order_date
+        type: time
+        grain: day
+      - name: customer_segment
+        type: categorical
+      - name: region
+        type: categorical
+    entities:
+      - name: customer_id
+        type: foreign
+    meta:
+      owner: "finance_team"
+      tier: "gold"
+
+  - name: average_order_value
+    description: "Average value per order"
+    source: fct_orders
+    measure:
+      type: avg
+      column: order_total
+      filters:
+        - "order_status = 'completed'"
+    dimensions:
+      - name: order_date
+        type: time
+        grain: day
+      - name: customer_segment
+        type: categorical
+    meta:
+      owner: "analytics_team"
+      tier: "silver"
+
+  - name: monthly_active_customers
+    description: "Count of unique customers who placed orders in the month"
+    source: fct_orders
+    measure:
+      type: count_distinct
+      column: customer_id
+    dimensions:
+      - name: order_month
+        type: time
+        grain: month
+    meta:
+      owner: "growth_team"
+      tier: "gold"

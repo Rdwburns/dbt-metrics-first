@@ -1,0 +1,98 @@
+# Example dbt_project.yml configuration for using dbt-metrics-first-embedded
+
+name: 'my_analytics_project'
+version: '1.0.0'
+config-version: 2
+
+profile: 'my_analytics_project'
+
+# Standard dbt paths
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target" 
+  - "dbt_packages"
+
+# Metrics-First Embedded Integration
+on-run-start:
+  # Run the embedded compiler before dbt processes models
+  - "{{ metrics_first_compile_embedded() }}"
+
+on-run-end:
+  # Optional: Show completion message
+  - "{{ log('✅ Metrics-first compilation completed!', info=True) }}"
+
+# Package configuration
+vars:
+  # Configuration for the embedded metrics-first compiler
+  dbt_metrics_first:
+    # Where to look for metrics-first YAML files
+    input_directories:
+      - "metrics"           # Primary metrics directory
+      - "semantic_models"   # Alternative directory
+      - "models/metrics"    # Nested metrics location
+    
+    # Where to output compiled semantic models
+    output_directory: "models"
+    
+    # File naming for compiled models
+    compiled_file_suffix: "_semantic_models"
+    
+    # Validation and error handling
+    validate_schema: true
+    fail_on_compilation_error: true
+    fail_on_validation_error: true
+    
+    # Logging preferences
+    verbose_logging: false      # Set to true for detailed logs
+    show_compilation_details: true
+    
+    # Advanced options
+    use_embedded_compiler: true  # Force use of embedded compiler
+
+# Model configurations
+models:
+  my_analytics_project:
+    # Compiled semantic models (generated automatically)
+    semantic_models:
+      +materialized: view
+      +docs:
+        show: true
+    
+    # Your regular dbt models
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
+
+# Environment-specific overrides
+# Uncomment and modify as needed for different environments
+
+# on-run-start:
+#   - |
+#     {% if target.name == 'dev' %}
+#       {{ metrics_first_compile_embedded() }}
+#     {% elif target.name == 'ci' %}
+#       {# Only validate in CI, don't compile #}
+#       {{ log("📋 Validating metrics-first files in CI environment", info=True) }}
+#     {% elif target.name == 'prod' %}
+#       {{ metrics_first_compile_embedded() }}
+#     {% endif %}
+
+# Alternative: Conditional compilation based on file changes
+# Useful for large projects with many metrics files
+
+# on-run-start:
+#   - |
+#     {# Only compile if there are changes to metrics files #}
+#     {% set metrics_changed = env_var('METRICS_CHANGED', 'true') == 'true' %}
+#     {% if metrics_changed %}
+#       {{ metrics_first_compile_embedded() }}
+#     {% else %}
+#       {{ log("📋 No metrics changes detected, skipping compilation", info=True) }}
+#     {% endif %}

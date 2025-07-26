@@ -1,0 +1,62 @@
+# Example metrics-first YAML demonstrating ratio and derived metrics
+
+version: 1
+
+metrics:
+  - name: conversion_rate
+    description: "Session to order conversion rate"
+    type: ratio
+    numerator:
+      source: fct_orders
+      measure:
+        type: count_distinct
+        column: session_id
+    denominator:
+      source: fct_sessions
+      measure:
+        type: count
+        column: session_id
+    dimensions:
+      - name: date
+        type: time
+        grain: day
+      - name: traffic_source
+        type: categorical
+    meta:
+      owner: "marketing_team"
+      tier: "gold"
+
+  - name: revenue_per_customer
+    description: "Average revenue per customer (derived metric)"
+    type: derived
+    formula: "total_revenue / monthly_active_customers"
+    dimensions:
+      - name: month
+        type: time
+        grain: month
+      - name: customer_segment
+        type: categorical
+    meta:
+      owner: "finance_team"
+      tier: "silver"
+
+  - name: orders_per_session
+    description: "Average number of orders per session"
+    type: ratio
+    numerator:
+      source: fct_orders
+      measure:
+        type: count
+        column: order_id
+    denominator:
+      source: fct_sessions
+      measure:
+        type: count
+        column: session_id
+    dimensions:
+      - name: date
+        type: time
+        grain: day
+    meta:
+      owner: "product_team"
+      tier: "bronze"
