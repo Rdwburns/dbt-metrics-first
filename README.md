@@ -77,7 +77,7 @@ dbt deps
 
 ### 1. Configure dbt_project.yml
 
-Add the embedded compiler to your dbt hooks:
+Add the metrics-first configuration to your dbt project:
 
 ```yaml
 # dbt_project.yml
@@ -127,13 +127,27 @@ metrics:
       tier: "gold"
 ```
 
-### 4. Run dbt
+### 4. Compile Metrics and Run dbt
 
+**Option A: Two-step process**
 ```bash
+# Step 1: Compile metrics-first files
+python dbt_packages/dbt_metrics_first/scripts/compile_metrics.py
+
+# Step 2: Run dbt commands
 dbt run
 ```
 
-The embedded compiler will automatically:
+**Option B: Use helper scripts**
+```bash
+# Unix/Mac
+./dbt_packages/dbt_metrics_first/scripts/dbt-compile-and-parse.sh run
+
+# Windows
+.\dbt_packages\dbt_metrics_first\scripts\dbt-compile-and-parse.bat run
+```
+
+The compiler will:
 1. 🔍 Detect your metrics-first files
 2. ✅ Validate the YAML syntax
 3. 🔄 Compile to dbt semantic models
@@ -218,6 +232,44 @@ metrics:
         type: sum
         column: order_total
     grain_to_date: month
+```
+
+#### Advanced Aggregation Types
+
+##### Median
+```yaml
+metrics:
+  - name: median_order_value
+    description: "Median order value"
+    source: fct_orders
+    measure:
+      type: median
+      column: order_total
+```
+
+##### Percentile
+```yaml
+metrics:
+  - name: p95_response_time
+    description: "95th percentile response time"
+    source: fct_api_logs
+    measure:
+      type: percentile
+      column: response_time_ms
+      agg_params:
+        percentile: 0.95
+        use_discrete_percentile: false  # false for continuous, true for discrete
+```
+
+##### Sum Boolean
+```yaml
+metrics:
+  - name: total_premium_users
+    description: "Count of premium users"
+    source: dim_users
+    measure:
+      type: sum_boolean
+      column: is_premium  # Counts TRUE values
 ```
 
 ### Advanced Parameters
@@ -327,6 +379,9 @@ SQL expressions enable:
 - `avg`: Average of column values
 - `min`: Minimum value
 - `max`: Maximum value
+- `median`: Median value (50th percentile)
+- `percentile`: Custom percentile (requires `agg_params`)
+- `sum_boolean`: Sum of boolean/binary values (counts TRUE values)
 
 ### Dimension Types
 
@@ -417,26 +472,32 @@ on-run-start:
 
 ## 🔧 How It Works
 
-The embedded package uses dbt's Python model capabilities to provide full compilation features:
+The package provides a standalone Python compiler that transforms metrics-first YAML to dbt semantic models:
 
 1. **Detection**: Scans configured directories for YAML files with `version: 1` and `metrics:` keys
-2. **Validation**: Validates metrics structure using embedded schema validation
+2. **Validation**: Validates metrics structure and aggregation types
 3. **Compilation**: Transforms metrics-first syntax to standard dbt semantic models
 4. **Output**: Writes compiled semantic models to the configured output directory
+
+**Note**: Due to dbt's requirement that Python models return DataFrames for materialization, the compiler is implemented as a standalone script rather than a dbt Python model. This allows it to perform file I/O operations without blocking dbt execution.
 
 ## 📁 File Structure
 
 ```
 dbt-metrics-first/
 ├── dbt_project.yml          # Package configuration
-├── models/
-│   └── metrics_first_embedded_compiler.py  # Embedded Python compiler
+├── scripts/
+│   ├── compile_metrics.py              # Standalone Python compiler
+│   ├── dbt-compile-and-parse.sh       # Unix/Mac helper script
+│   └── dbt-compile-and-parse.bat      # Windows helper script
 ├── macros/
-│   └── compiler.sql         # dbt macros for compilation
+│   └── compiler.sql         # dbt macros for compilation guidance
 ├── examples/
 │   └── metrics/
 │       ├── revenue_metrics.yml
-│       └── conversion_metrics.yml
+│       ├── conversion_metrics.yml
+│       ├── aggregation_examples.yml    # New aggregation types examples
+│       └── ...
 └── README.md
 ```
 
@@ -477,25 +538,46 @@ Error: Cannot write to models/ directory
 2. Run dbt from the project root directory
 3. Check file permissions on the output directory
 
-### Python Model Errors
+### Compilation Not Running
 
 ```
-Error: Python model execution failed
+Note: Metrics compilation now uses a standalone script
 ```
 
 **Solutions:**
-1. Ensure your dbt version supports Python models (>=1.3.0)
-2. Verify Python dependencies (yaml, pandas) are available
-3. Check the dbt logs for detailed Python error messages
+1. Run the standalone compiler before dbt commands:
+   ```bash
+   python dbt_packages/dbt_metrics_first/scripts/compile_metrics.py
+   ```
+2. Use the helper scripts for automated compilation:
+   ```bash
+   # Unix/Mac
+   ./dbt_packages/dbt_metrics_first/scripts/dbt-compile-and-parse.sh run
+   ```
+3. Add compilation to your CI/CD pipeline or development workflow
+
+### Script Not Found
+
+```
+Error: compile_metrics.py not found
+```
+
+**Solutions:**
+1. Ensure you've run `dbt deps` to install the package
+2. Check that the scripts are in the correct location: `dbt_packages/dbt_metrics_first/scripts/`
+3. Run from your dbt project root directory
 
 ## 📖 Examples
 
 See the `examples/` directory for complete examples of:
 - Simple metrics (sum, count, average)
+- Advanced aggregations (median, percentile, sum_boolean)
 - Ratio metrics (conversion rates, percentages)
 - Derived metrics (calculated from other metrics)
+- Conversion metrics (funnel analysis)
+- Cumulative metrics (running totals, MTD/YTD)
 - Multi-dimensional metrics
-- Filtered metrics
+- Filtered metrics with non-additive dimensions
 
 ## 🤝 Contributing
 

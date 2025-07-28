@@ -1,0 +1,189 @@
+# Example metrics demonstrating new aggregation types
+# This file shows how to use median, percentile, and sum_boolean aggregations
+
+version: 1
+
+metrics:
+  # Median aggregation example
+  - name: median_order_value
+    description: "Median value of customer orders"
+    label: "Median Order Value"
+    source: fct_orders
+    measure:
+      type: median
+      column: order_total
+      filters:
+        - "order_status = 'completed'"
+    dimensions:
+      - name: order_date
+        type: time
+        grain: day
+      - name: customer_segment
+        type: categorical
+    meta:
+      owner: "analytics_team"
+      dashboard: "customer_insights"
+
+  # Percentile aggregation examples
+  - name: p95_response_time
+    description: "95th percentile of API response times"
+    label: "P95 Response Time"
+    source: fct_api_logs
+    measure:
+      type: percentile
+      column: response_time_ms
+      agg_params:
+        percentile: 0.95
+        use_discrete_percentile: false  # Use continuous percentile
+    dimensions:
+      - name: request_date
+        type: time
+        grain: hour
+      - name: endpoint
+        type: categorical
+      - name: region
+        type: categorical
+    meta:
+      sla_threshold: 1000
+      alert_enabled: true
+
+  - name: p99_transaction_amount
+    description: "99th percentile of transaction amounts"
+    label: "P99 Transaction Amount"
+    source: fct_transactions
+    measure:
+      type: percentile
+      column: transaction_amount_usd
+      agg_params:
+        percentile: 0.99
+        use_discrete_percentile: true  # Use discrete percentile
+      filters:
+        - "transaction_status = 'successful'"
+    dimensions:
+      - name: transaction_date
+        type: time
+        grain: day
+      - name: payment_method
+        type: categorical
+      - name: merchant_category
+        type: categorical
+
+  # Sum boolean aggregation examples
+  - name: total_premium_users
+    description: "Count of users with premium status"
+    label: "Premium Users"
+    source: dim_users
+    measure:
+      type: sum_boolean
+      column: is_premium
+    dimensions:
+      - name: signup_date
+        type: time
+        grain: month
+      - name: user_country
+        type: categorical
+      - name: acquisition_channel
+        type: categorical
+    meta:
+      business_metric: true
+      refresh_frequency: "daily"
+
+  - name: active_feature_flags
+    description: "Count of active feature flags"
+    label: "Active Feature Flags"
+    source: dim_feature_flags
+    measure:
+      type: sum_boolean
+      column: is_active
+      filters:
+        - "flag_type IN ('experiment', 'rollout')"
+    dimensions:
+      - name: created_date
+        type: time
+        grain: week
+      - name: flag_category
+        type: categorical
+      - name: target_audience
+        type: categorical
+
+  # Complex example combining multiple metrics
+  - name: fraud_detection_score
+    description: "Composite fraud detection score using multiple aggregations"
+    type: derived
+    formula: |
+      (total_flagged_transactions / total_transactions) * 100 
+      + (p99_transaction_amount / median_transaction_amount)
+    meta:
+      calculation_notes: "Higher scores indicate higher fraud risk"
+
+  # Supporting metrics for the derived metric above
+  - name: total_flagged_transactions
+    description: "Count of transactions flagged for review"
+    source: fct_transactions
+    measure:
+      type: sum_boolean
+      column: is_flagged_for_review
+    dimensions:
+      - name: transaction_date
+        type: time
+        grain: day
+
+  - name: total_transactions
+    description: "Total number of transactions"
+    source: fct_transactions
+    measure:
+      type: count
+      column: transaction_id
+    dimensions:
+      - name: transaction_date
+        type: time
+        grain: day
+
+  - name: median_transaction_amount
+    description: "Median transaction amount"
+    source: fct_transactions
+    measure:
+      type: median
+      column: transaction_amount_usd
+    dimensions:
+      - name: transaction_date
+        type: time
+        grain: day
+
+  - name: p99_transaction_amount_for_fraud
+    description: "99th percentile transaction amount for fraud detection"
+    source: fct_transactions
+    measure:
+      type: percentile
+      column: transaction_amount_usd
+      agg_params:
+        percentile: 0.99
+        use_discrete_percentile: false
+    dimensions:
+      - name: transaction_date
+        type: time
+        grain: day
+
+  # Example with non-additive dimensions
+  - name: current_active_subscriptions
+    description: "Number of currently active subscriptions"
+    source: fct_subscription_snapshots
+    measure:
+      type: sum_boolean
+      column: is_active
+      non_additive_dimension:
+        name: snapshot_date
+        window_choice: max  # Use the most recent snapshot
+        window_groupings:
+          - customer_id
+    dimensions:
+      - name: snapshot_date
+        type: time
+        grain: day
+      - name: subscription_plan
+        type: categorical
+      - name: billing_frequency
+        type: categorical
+    meta:
+      business_critical: true
+      description: "This metric uses non-additive dimensions to ensure we only count the most recent status per customer"
