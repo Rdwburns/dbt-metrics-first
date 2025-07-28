@@ -40,7 +40,7 @@ metrics:
     label: "AOV"
     source: fct_orders
     measure:
-      type: avg
+      type: average
       column: order_total
       filters:
         - "order_status = 'completed'"

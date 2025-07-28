@@ -376,7 +376,7 @@ SQL expressions enable:
 - `sum`: Sum of column values
 - `count`: Count of rows
 - `count_distinct`: Count of unique values
-- `avg`: Average of column values
+- `average`: Average of column values (also accepts `avg` which is converted)
 - `min`: Minimum value
 - `max`: Maximum value
 - `median`: Median value (50th percentile)

@@ -37,9 +37,17 @@ def setup_yaml():
 
 # Supported aggregation types in dbt semantic layer
 SUPPORTED_AGGREGATIONS = [
-    'sum', 'count', 'count_distinct', 'avg', 'min', 'max',
+    'sum', 'count', 'count_distinct', 'average', 'min', 'max',
     'median', 'percentile', 'sum_boolean'
 ]
+
+# Mapping for common abbreviations to correct aggregation types
+AGGREGATION_ALIASES = {
+    'avg': 'average',
+    'cnt': 'count',
+    'cnt_distinct': 'count_distinct',
+    'count_unique': 'count_distinct'
+}
 
 
 class MetricsCompiler:
@@ -174,6 +182,11 @@ class MetricsCompiler:
             # Validate aggregation type if present
             if 'measure' in metric and 'type' in metric['measure']:
                 agg_type = metric['measure']['type']
+                # Check if it's an alias
+                if agg_type in AGGREGATION_ALIASES:
+                    agg_type = AGGREGATION_ALIASES[agg_type]
+                    metric['measure']['type'] = agg_type  # Update to correct type
+                    
                 if agg_type not in SUPPORTED_AGGREGATIONS:
                     raise ValueError(f"Metric '{metric['name']}' has unsupported aggregation type '{agg_type}'. "
                                    f"Supported types: {', '.join(SUPPORTED_AGGREGATIONS)}")
@@ -290,9 +303,14 @@ class MetricsCompiler:
             if 'measure' in metric:
                 measure_name = f"{metric['name']}_measure"
                 if measure_name not in seen_measures:
+                    # Get aggregation type and map aliases
+                    agg_type = metric['measure'].get('type', 'sum')
+                    if agg_type in AGGREGATION_ALIASES:
+                        agg_type = AGGREGATION_ALIASES[agg_type]
+                    
                     measure = {
                         'name': measure_name,
-                        'agg': metric['measure'].get('type', 'sum'),
+                        'agg': agg_type,
                         'expr': metric['measure'].get('column', metric['name'])
                     }
                     
@@ -319,9 +337,14 @@ class MetricsCompiler:
                 if 'numerator' in metric and 'measure' in metric['numerator']:
                     num_measure_name = f"{metric['numerator']['name']}_measure"
                     if num_measure_name not in seen_measures:
+                        # Get aggregation type and map aliases
+                        agg_type = metric['numerator']['measure'].get('type', 'sum')
+                        if agg_type in AGGREGATION_ALIASES:
+                            agg_type = AGGREGATION_ALIASES[agg_type]
+                        
                         num_measure = {
                             'name': num_measure_name,
-                            'agg': metric['numerator']['measure'].get('type', 'sum'),
+                            'agg': agg_type,
                             'expr': metric['numerator']['measure'].get('column', metric['numerator']['name'])
                         }
                         if 'agg_params' in metric['numerator']['measure']:
@@ -338,9 +361,14 @@ class MetricsCompiler:
                 if 'denominator' in metric and 'measure' in metric['denominator']:
                     den_measure_name = f"{metric['denominator']['name']}_measure"
                     if den_measure_name not in seen_measures:
+                        # Get aggregation type and map aliases
+                        agg_type = metric['denominator']['measure'].get('type', 'sum')
+                        if agg_type in AGGREGATION_ALIASES:
+                            agg_type = AGGREGATION_ALIASES[agg_type]
+                        
                         den_measure = {
                             'name': den_measure_name,
-                            'agg': metric['denominator']['measure'].get('type', 'sum'),
+                            'agg': agg_type,
                             'expr': metric['denominator']['measure'].get('column', metric['denominator']['name'])
                         }
                         if 'agg_params' in metric['denominator']['measure']:
@@ -358,9 +386,14 @@ class MetricsCompiler:
                 if 'measure' in metric and 'measure' in metric['measure']:
                     cum_measure_name = f"{metric['measure']['name']}_measure"
                     if cum_measure_name not in seen_measures:
+                        # Get aggregation type and map aliases
+                        agg_type = metric['measure']['measure'].get('type', 'sum')
+                        if agg_type in AGGREGATION_ALIASES:
+                            agg_type = AGGREGATION_ALIASES[agg_type]
+                        
                         cum_measure = {
                             'name': cum_measure_name,
-                            'agg': metric['measure']['measure'].get('type', 'sum'),
+                            'agg': agg_type,
                             'expr': metric['measure']['measure'].get('column', metric['measure']['name'])
                         }
                         if 'agg_params' in metric['measure']['measure']:
