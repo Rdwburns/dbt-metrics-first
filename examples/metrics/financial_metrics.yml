@@ -1,0 +1,145 @@
+# Financial metrics examples for dbt-metrics-first
+# Demonstrates non-additive dimensions for financial use cases
+
+version: 1
+metrics:
+  # Account balance - can't sum across time
+  - name: account_balance
+    description: "Current account balance (end of period)"
+    label: "Account Balance"
+    source: fct_daily_balances
+    measure:
+      type: sum
+      column: balance_amount
+      # Non-additive dimension prevents incorrect time aggregation
+      non_additive_dimension:
+        name: balance_date
+        window_choice: max  # Use balance from end of period
+        window_groupings:
+          - account_id
+    dimensions:
+      - name: balance_date
+        type: time
+        grain: day
+      - name: account_type
+        type: categorical
+      - name: customer_segment
+        type: categorical
+    entities:
+      - name: account_id
+        type: primary
+    config:
+      enabled: true
+      group: "financial_metrics"
+
+  # Monthly Recurring Revenue (MRR)
+  - name: mrr
+    description: "Monthly recurring revenue from active subscriptions"
+    label: "MRR"
+    source: fct_subscription_snapshots
+    measure:
+      type: sum
+      column: subscription_value
+      filters:
+        - "subscription_status = 'active'"
+      # MRR should not be summed across months
+      non_additive_dimension:
+        name: snapshot_date
+        window_choice: max  # Latest snapshot in period
+        window_groupings:
+          - subscription_id
+    dimensions:
+      - name: snapshot_date
+        type: time
+        grain: day
+      - name: plan_type
+        type: categorical
+      - name: billing_frequency
+        type: categorical
+    entities:
+      - name: subscription_id
+        type: primary
+      - name: customer_id
+        type: foreign
+
+  # Inventory levels - point in time, not additive over time
+  - name: inventory_on_hand
+    description: "Current inventory levels by SKU"
+    label: "Inventory on Hand"
+    source: fct_inventory_snapshots
+    measure:
+      type: sum
+      column: quantity_on_hand
+      # Use the most recent inventory count
+      non_additive_dimension:
+        name: snapshot_timestamp
+        window_choice: max
+        window_groupings:
+          - sku_id
+          - warehouse_id
+    dimensions:
+      - name: snapshot_timestamp
+        type: time
+        grain: hour
+      - name: product_category
+        type: categorical
+      - name: warehouse_region
+        type: categorical
+    entities:
+      - name: sku_id
+        type: primary
+      - name: warehouse_id
+        type: foreign
+
+  # Outstanding loan balance
+  - name: loan_portfolio_balance
+    description: "Total outstanding loan balance"
+    label: "Loan Portfolio"
+    source: fct_loan_balances
+    measure:
+      type: sum
+      column: outstanding_principal
+      # Point-in-time balance, not cumulative
+      non_additive_dimension:
+        name: balance_date
+        window_choice: max
+        window_groupings:
+          - loan_id
+    dimensions:
+      - name: balance_date
+        type: time
+        grain: day
+      - name: loan_type
+        type: categorical
+      - name: risk_rating
+        type: categorical
+      - name: origination_year
+        type: categorical
+    filter: |
+      {{ Dimension('loan_status') }} != 'paid_off'
+
+  # Customer lifetime value at a point in time
+  - name: customer_ltv
+    description: "Customer lifetime value calculation"
+    label: "Customer LTV"
+    source: fct_customer_value
+    measure:
+      type: sum
+      column: lifetime_value
+      # LTV is calculated at points in time, not additive
+      non_additive_dimension:
+        name: calculation_date
+        window_choice: max
+        window_groupings:
+          - customer_id
+    dimensions:
+      - name: calculation_date
+        type: time
+        grain: month
+      - name: customer_cohort
+        type: categorical
+      - name: acquisition_channel
+        type: categorical
+    meta:
+      calculation_method: "predictive_model"
+      refresh_frequency: "monthly"

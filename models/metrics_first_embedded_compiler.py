@@ -239,21 +239,37 @@ class EmbeddedMetricsCompiler:
             for dim in metric.get('dimensions', []):
                 dim_name = dim['name']
                 if dim_name not in seen_dimensions:
-                    dimensions.append({
+                    dimension_def = {
                         'name': dim_name,
                         'type': dim.get('type', 'categorical'),
                         'time_granularity': dim.get('grain', 'day') if dim.get('type') == 'time' else None
-                    })
+                    }
+                    
+                    # Add expr if provided
+                    if 'expr' in dim:
+                        dimension_def['expr'] = dim['expr']
+                    
+                    # Add label if provided
+                    if 'label' in dim:
+                        dimension_def['label'] = dim['label']
+                    
+                    dimensions.append(dimension_def)
                     seen_dimensions.add(dim_name)
             
             # Add entities
             for entity in metric.get('entities', []):
                 entity_name = entity['name']
                 if entity_name not in seen_entities:
-                    entities.append({
+                    entity_def = {
                         'name': entity_name,
                         'type': entity.get('type', 'primary')
-                    })
+                    }
+                    
+                    # Add expr if provided (for composite keys)
+                    if 'expr' in entity:
+                        entity_def['expr'] = entity['expr']
+                    
+                    entities.append(entity_def)
                     seen_entities.add(entity_name)
             
             # Add measure from the metric
@@ -272,8 +288,70 @@ class EmbeddedMetricsCompiler:
                             'where': ' AND '.join(metric['measure']['filters'])
                         }
                     
+                    # Add non-additive dimension if present
+                    if 'non_additive_dimension' in metric['measure']:
+                        measure['non_additive_dimension'] = metric['measure']['non_additive_dimension']
+                    
                     measures.append(measure)
                     seen_measures.add(measure_name)
+            
+            # Handle measures for ratio metrics
+            metric_type = metric.get('type', 'simple')
+            if metric_type == 'ratio':
+                # Add numerator measure
+                if 'numerator' in metric and 'measure' in metric['numerator']:
+                    num_measure_name = f"{metric['numerator']['name']}_measure"
+                    if num_measure_name not in seen_measures:
+                        num_measure = {
+                            'name': num_measure_name,
+                            'agg': metric['numerator']['measure'].get('type', 'sum'),
+                            'expr': metric['numerator']['measure'].get('column', metric['numerator']['name'])
+                        }
+                        if 'filters' in metric['numerator']['measure']:
+                            num_measure['agg_params'] = {
+                                'where': ' AND '.join(metric['numerator']['measure']['filters'])
+                            }
+                        if 'non_additive_dimension' in metric['numerator']['measure']:
+                            num_measure['non_additive_dimension'] = metric['numerator']['measure']['non_additive_dimension']
+                        measures.append(num_measure)
+                        seen_measures.add(num_measure_name)
+                
+                # Add denominator measure
+                if 'denominator' in metric and 'measure' in metric['denominator']:
+                    den_measure_name = f"{metric['denominator']['name']}_measure"
+                    if den_measure_name not in seen_measures:
+                        den_measure = {
+                            'name': den_measure_name,
+                            'agg': metric['denominator']['measure'].get('type', 'sum'),
+                            'expr': metric['denominator']['measure'].get('column', metric['denominator']['name'])
+                        }
+                        if 'filters' in metric['denominator']['measure']:
+                            den_measure['agg_params'] = {
+                                'where': ' AND '.join(metric['denominator']['measure']['filters'])
+                            }
+                        if 'non_additive_dimension' in metric['denominator']['measure']:
+                            den_measure['non_additive_dimension'] = metric['denominator']['measure']['non_additive_dimension']
+                        measures.append(den_measure)
+                        seen_measures.add(den_measure_name)
+            
+            # Handle measures for cumulative metrics
+            elif metric_type == 'cumulative':
+                if 'measure' in metric and 'measure' in metric['measure']:
+                    cum_measure_name = f"{metric['measure']['name']}_measure"
+                    if cum_measure_name not in seen_measures:
+                        cum_measure = {
+                            'name': cum_measure_name,
+                            'agg': metric['measure']['measure'].get('type', 'sum'),
+                            'expr': metric['measure']['measure'].get('column', metric['measure']['name'])
+                        }
+                        if 'filters' in metric['measure']['measure']:
+                            cum_measure['agg_params'] = {
+                                'where': ' AND '.join(metric['measure']['measure']['filters'])
+                            }
+                        if 'non_additive_dimension' in metric['measure']['measure']:
+                            cum_measure['non_additive_dimension'] = metric['measure']['measure']['non_additive_dimension']
+                        measures.append(cum_measure)
+                        seen_measures.add(cum_measure_name)
         
         # Build the semantic model
         semantic_model = {
@@ -297,51 +375,110 @@ class EmbeddedMetricsCompiler:
         
         metric_type = metric.get('type', 'simple')
         
+        # Build base metric structure with common parameters
+        base_metric = {
+            'name': metric['name'],
+            'description': metric['description'],
+            'type': metric_type
+        }
+        
+        # Add optional common parameters
+        if 'label' in metric:
+            base_metric['label'] = metric['label']
+        
+        if 'filter' in metric:
+            base_metric['filter'] = metric['filter']
+        
+        if 'config' in metric:
+            base_metric['config'] = metric['config']
+        
+        if 'meta' in metric:
+            base_metric['meta'] = metric['meta']
+        
+        if 'offset_window' in metric:
+            base_metric['offset_window'] = metric['offset_window']
+        
+        if 'fill_nulls_with' in metric:
+            base_metric['fill_nulls_with'] = metric['fill_nulls_with']
+        
         if metric_type == 'simple':
-            return {
-                'name': metric['name'],
-                'description': metric['description'],
-                'type': 'simple',
-                'type_params': {
-                    'measure': f"{metric['name']}_measure"
-                },
-                'meta': metric.get('meta', {})
+            base_metric['type_params'] = {
+                'measure': f"{metric['name']}_measure"
             }
+            return base_metric
         
         elif metric_type == 'ratio':
-            return {
-                'name': metric['name'],
-                'description': metric['description'],
-                'type': 'ratio',
-                'type_params': {
-                    'numerator': f"{metric['numerator']['name']}_measure",
-                    'denominator': f"{metric['denominator']['name']}_measure"
-                },
-                'meta': metric.get('meta', {})
+            base_metric['type_params'] = {
+                'numerator': f"{metric['numerator']['name']}_measure",
+                'denominator': f"{metric['denominator']['name']}_measure"
             }
+            return base_metric
         
         elif metric_type == 'derived':
-            return {
-                'name': metric['name'],
-                'description': metric['description'],
-                'type': 'derived',
-                'type_params': {
-                    'expr': metric['formula']
-                },
-                'meta': metric.get('meta', {})
+            base_metric['type_params'] = {
+                'expr': metric['formula']
             }
+            return base_metric
+        
+        elif metric_type == 'conversion':
+            # Build conversion metric
+            conversion_params = {
+                'conversion_type_params': {
+                    'entity': metric['entity']
+                }
+            }
+            
+            # Add base measure
+            if 'base_measure' in metric:
+                conversion_params['conversion_type_params']['base_measure'] = {
+                    'name': f"{metric['base_measure']['name']}_measure"
+                }
+            
+            # Add conversion measure
+            if 'conversion_measure' in metric:
+                conversion_params['conversion_type_params']['conversion_measure'] = {
+                    'name': f"{metric['conversion_measure']['name']}_measure"
+                }
+            
+            # Add optional window
+            if 'window' in metric:
+                conversion_params['conversion_type_params']['window'] = metric['window']
+            
+            # Add optional calculation type
+            if 'calculation' in metric:
+                conversion_params['conversion_type_params']['calculation'] = metric['calculation']
+            
+            # Add optional constant properties
+            if 'constant_properties' in metric:
+                conversion_params['conversion_type_params']['constant_properties'] = metric['constant_properties']
+            
+            base_metric['type_params'] = conversion_params
+            return base_metric
+        
+        elif metric_type == 'cumulative':
+            # Build cumulative metric
+            cumulative_params = {
+                'measure': f"{metric['measure']['name']}_measure"
+            }
+            
+            # Add optional window
+            if 'window' in metric:
+                cumulative_params['window'] = metric['window']
+            
+            # Add optional grain_to_date
+            if 'grain_to_date' in metric:
+                cumulative_params['grain_to_date'] = metric['grain_to_date']
+            
+            base_metric['type_params'] = cumulative_params
+            return base_metric
         
         else:
             # Default to simple for unknown types
-            return {
-                'name': metric['name'],
-                'description': metric['description'],
-                'type': 'simple',
-                'type_params': {
-                    'measure': f"{metric['name']}_measure"
-                },
-                'meta': metric.get('meta', {})
+            base_metric['type'] = 'simple'
+            base_metric['type_params'] = {
+                'measure': f"{metric['name']}_measure"
             }
+            return base_metric
     
     def _get_output_path(self, input_path: str) -> str:
         """Generate output path for compiled semantic models."""

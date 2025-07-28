@@ -1,0 +1,152 @@
+# Advanced metrics examples for dbt-metrics-first
+# Demonstrates offset_window, fill_nulls_with, and other advanced features
+
+version: 1
+metrics:
+  # Period-over-period comparison with offset_window
+  - name: revenue_vs_last_month
+    description: "Revenue compared to same period last month"
+    label: "Revenue MoM"
+    source: fct_orders
+    measure:
+      type: sum
+      column: order_total
+      filters:
+        - "order_status = 'completed'"
+    # Compare to 1 month ago
+    offset_window: "1 month"
+    dimensions:
+      - name: order_date
+        type: time
+        grain: day
+      - name: region
+        type: categorical
+    meta:
+      dashboard: "executive_kpis"
+
+  # Handling nulls in ratio metrics
+  - name: conversion_rate_with_defaults
+    description: "Visit to purchase conversion rate with null handling"
+    type: ratio
+    label: "Conversion Rate"
+    numerator:
+      name: purchases
+      source: fct_orders
+      measure:
+        type: count
+        column: order_id
+    denominator:
+      name: visits
+      source: fct_visits
+      measure:
+        type: count
+        column: visit_id
+    # Replace nulls with 0 instead of leaving them null
+    fill_nulls_with: 0
+    dimensions:
+      - name: visit_date
+        type: time
+        grain: day
+      - name: traffic_source
+        type: categorical
+
+  # Year-over-year comparison
+  - name: revenue_yoy_growth
+    description: "Revenue compared to same period last year"
+    label: "Revenue YoY %"
+    source: fct_orders
+    measure:
+      type: sum
+      column: order_total
+    offset_window: "1 year"
+    fill_nulls_with: 0
+    dimensions:
+      - name: order_date
+        type: time
+        grain: month
+    config:
+      enabled: true
+      group: "growth_metrics"
+
+  # Conversion with constant properties
+  - name: premium_upgrade_conversion
+    description: "Free users converting to premium with plan tracking"
+    type: conversion
+    label: "Free to Premium"
+    entity: user
+    base_measure:
+      name: free_signups
+      source: fct_user_events
+      measure:
+        type: count
+        column: user_id
+        filters:
+          - "event_type = 'signup'"
+          - "plan_type = 'free'"
+    conversion_measure:
+      name: premium_upgrades
+      source: fct_user_events
+      measure:
+        type: count
+        column: user_id
+        filters:
+          - "event_type = 'plan_change'"
+          - "new_plan_type = 'premium'"
+    window: "30 days"
+    calculation: conversion_rate
+    # Track which plan they upgraded to
+    constant_properties:
+      - base_property: plan_type
+        conversion_property: new_plan_type
+    dimensions:
+      - name: signup_date
+        type: time
+        grain: day
+      - name: acquisition_channel
+        type: categorical
+
+  # Complex cumulative with null handling
+  - name: rolling_30d_active_users
+    description: "30-day rolling active users with proper null handling"
+    type: cumulative
+    label: "30d Active Users"
+    measure:
+      name: daily_active_users
+      source: fct_user_activity
+      measure:
+        type: count_distinct
+        column: user_id
+    window: "30 days"
+    # Fill missing days with 0 instead of null
+    fill_nulls_with: 0
+    dimensions:
+      - name: activity_date
+        type: time
+        grain: day
+      - name: user_segment
+        type: categorical
+    filter: |
+      {{ Dimension('user_segment') }} != 'test'
+    config:
+      enabled: true
+      group: "engagement_metrics"
+
+  # Week-over-week comparison
+  - name: orders_wow_change
+    description: "Order count compared to previous week"
+    label: "Orders WoW"
+    source: fct_orders
+    measure:
+      type: count
+      column: order_id
+    offset_window: "1 week"
+    fill_nulls_with: null  # Keep nulls as nulls
+    dimensions:
+      - name: order_date
+        type: time
+        grain: day
+      - name: order_channel
+        type: categorical
+    meta:
+      alert_on: "negative_change"
+      threshold: -0.1

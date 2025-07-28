@@ -1,0 +1,39 @@
+[0m12:38:38.082026 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x11200b400>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x114420550>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1144583d0>]}
+
+
+============================== 12:38:38.085454 | 6dc31693-1e06-4b59-9c44-5c72f6c1bc11 ==============================
+[0m12:38:38.085454 [info ] [MainThread]: Running with dbt=1.7.4
+[0m12:38:38.086005 [debug] [MainThread]: running dbt with arguments {'printer_width': '80', 'indirect_selection': 'eager', 'log_cache_events': 'False', 'write_json': 'True', 'partial_parse': 'True', 'cache_selected_only': 'False', 'warn_error': 'None', 'debug': 'False', 'profiles_dir': '/Users/roryarmitage-burns/.dbt', 'log_path': '/Users/roryarmitage-burns/Documents/GitHub/metrics-first-dbt/dbt-metrics-first/dbt-metrics-first/logs', 'fail_fast': 'False', 'version_check': 'True', 'use_colors': 'True', 'use_experimental_parser': 'False', 'no_print': 'None', 'quiet': 'False', 'log_format': 'default', 'introspect': 'True', 'warn_error_options': 'WarnErrorOptions(include=[], exclude=[])', 'invocation_command': 'dbt ', 'target_path': 'None', 'static_parser': 'True', 'send_anonymous_usage_stats': 'True'}
+[0m12:38:38.180052 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'project_id', 'label': '6dc31693-1e06-4b59-9c44-5c72f6c1bc11', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x113cbc040>]}
+[0m12:38:38.180664 [info ] [MainThread]: Warning: No packages were found in packages.yml
+[0m12:38:38.181202 [info ] [MainThread]: Warning: No packages were found in packages.yml
+[0m12:38:38.183674 [debug] [MainThread]: Resource report: {"command_name": "deps", "command_success": true, "command_wall_clock_time": 0.15900913, "process_user_time": 1.368063, "process_kernel_time": 0.137021, "process_mem_max_rss": "103186432", "process_in_blocks": "0", "process_out_blocks": "0"}
+[0m12:38:38.184035 [debug] [MainThread]: Command `cli deps` succeeded at 12:38:38.183945 after 0.16 seconds
+[0m12:38:38.184284 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x11200b400>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x113cbc040>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x114631d90>]}
+[0m12:38:38.184528 [debug] [MainThread]: Flushing usage events
+[0m12:43:15.102233 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1039ec250>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1079e0910>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107a09100>]}
+
+
+============================== 12:43:15.106307 | 2f2d9555-7c00-46f1-9db7-f4a963fb91c5 ==============================
+[0m12:43:15.106307 [info ] [MainThread]: Running with dbt=1.7.4
+[0m12:43:15.106700 [debug] [MainThread]: running dbt with arguments {'printer_width': '80', 'indirect_selection': 'eager', 'write_json': 'True', 'log_cache_events': 'False', 'partial_parse': 'True', 'cache_selected_only': 'False', 'profiles_dir': '/Users/roryarmitage-burns/.dbt', 'fail_fast': 'False', 'debug': 'False', 'log_path': '/Users/roryarmitage-burns/Documents/GitHub/metrics-first-dbt/dbt-metrics-first/dbt-metrics-first/logs', 'version_check': 'True', 'warn_error': 'None', 'use_colors': 'True', 'use_experimental_parser': 'False', 'no_print': 'None', 'quiet': 'False', 'log_format': 'default', 'introspect': 'True', 'invocation_command': 'dbt ', 'warn_error_options': 'WarnErrorOptions(include=[], exclude=[])', 'target_path': 'None', 'static_parser': 'True', 'send_anonymous_usage_stats': 'True'}
+[0m12:43:15.181971 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'project_id', 'label': '2f2d9555-7c00-46f1-9db7-f4a963fb91c5', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107a09340>]}
+[0m12:43:15.182530 [info ] [MainThread]: Warning: No packages were found in packages.yml
+[0m12:43:15.183166 [info ] [MainThread]: Warning: No packages were found in packages.yml
+[0m12:43:15.184964 [debug] [MainThread]: Resource report: {"command_name": "deps", "command_success": true, "command_wall_clock_time": 0.122237794, "process_user_time": 1.29374, "process_kernel_time": 0.132612, "process_mem_max_rss": "104169472", "process_in_blocks": "0", "process_out_blocks": "0"}
+[0m12:43:15.185295 [debug] [MainThread]: Command `cli deps` succeeded at 12:43:15.185212 after 0.12 seconds
+[0m12:43:15.185546 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1039ec250>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107aa6820>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107a949d0>]}
+[0m12:43:15.185773 [debug] [MainThread]: Flushing usage events
+[0m09:27:30.852160 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x104ff45b0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107420160>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107449190>]}
+
+
+============================== 09:27:30.855144 | 70046cbb-ef9e-45a2-b124-88981edf0f51 ==============================
+[0m09:27:30.855144 [info ] [MainThread]: Running with dbt=1.7.4
+[0m09:27:30.855617 [debug] [MainThread]: running dbt with arguments {'printer_width': '80', 'indirect_selection': 'eager', 'log_cache_events': 'False', 'write_json': 'True', 'partial_parse': 'True', 'cache_selected_only': 'False', 'profiles_dir': '/Users/roryarmitage-burns/.dbt', 'debug': 'False', 'warn_error': 'None', 'log_path': '/Users/roryarmitage-burns/Documents/GitHub/metrics-first-dbt/dbt-metrics-first/dbt-metrics-first/logs', 'version_check': 'True', 'fail_fast': 'False', 'use_colors': 'True', 'use_experimental_parser': 'False', 'no_print': 'None', 'quiet': 'False', 'log_format': 'default', 'introspect': 'True', 'warn_error_options': 'WarnErrorOptions(include=[], exclude=[])', 'invocation_command': 'dbt ', 'target_path': 'None', 'static_parser': 'True', 'send_anonymous_usage_stats': 'True'}
+[0m09:27:30.925373 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'project_id', 'label': '70046cbb-ef9e-45a2-b124-88981edf0f51', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107449a60>]}
+[0m09:27:30.925994 [info ] [MainThread]: Warning: No packages were found in packages.yml
+[0m09:27:30.926647 [info ] [MainThread]: Warning: No packages were found in packages.yml
+[0m09:27:30.928981 [debug] [MainThread]: Resource report: {"command_name": "deps", "command_success": true, "command_wall_clock_time": 0.11599196, "process_user_time": 1.431721, "process_kernel_time": 0.169984, "process_mem_max_rss": "103809024", "process_in_blocks": "0", "process_out_blocks": "0"}
+[0m09:27:30.929478 [debug] [MainThread]: Command `cli deps` succeeded at 09:27:30.929343 after 0.12 seconds
+[0m09:27:30.929780 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x104ff45b0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107424880>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1074e25b0>]}
+[0m09:27:30.930058 [debug] [MainThread]: Flushing usage events

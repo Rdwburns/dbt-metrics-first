@@ -1,0 +1,164 @@
+# Example conversion metrics for dbt-metrics-first
+# Demonstrates various conversion funnel patterns
+
+version: 1
+metrics:
+  # Basic visit to purchase conversion
+  - name: visit_to_purchase_rate
+    description: "Percentage of visits that result in a purchase within 7 days"
+    type: conversion
+    label: "Visit → Purchase Rate"
+    entity: user
+    base_measure:
+      name: visits
+      source: fct_visits
+      measure:
+        type: count
+        column: visit_id
+    conversion_measure:
+      name: purchases
+      source: fct_orders
+      measure:
+        type: count
+        column: order_id
+    window: "7 days"
+    calculation: conversion_rate
+    dimensions:
+      - name: visit_date
+        type: time
+        grain: day
+      - name: traffic_source
+        type: categorical
+      - name: device_type
+        type: categorical
+    meta:
+      funnel_step: "purchase"
+      team: "growth"
+
+  # Signup to first purchase conversion count
+  - name: signup_to_first_purchase_count
+    description: "Number of users who make a purchase within 30 days of signup"
+    type: conversion
+    label: "New User Conversions"
+    entity: user
+    base_measure:
+      name: signups
+      source: fct_user_signups
+      measure:
+        type: count_distinct
+        column: user_id
+    conversion_measure:
+      name: first_purchases
+      source: fct_orders
+      measure:
+        type: count_distinct
+        column: user_id
+        filters:
+          - "is_first_purchase = true"
+    window: "30 days"
+    calculation: conversions  # Returns count instead of rate
+    dimensions:
+      - name: signup_date
+        type: time
+        grain: day
+      - name: signup_source
+        type: categorical
+      - name: user_segment
+        type: categorical
+
+  # Cart abandonment (inverse conversion)
+  - name: cart_abandonment_rate
+    description: "Percentage of cart creations that don't result in purchase within 1 day"
+    type: conversion
+    label: "Cart Abandonment"
+    entity: session
+    base_measure:
+      name: cart_creations
+      source: fct_carts
+      measure:
+        type: count
+        column: cart_id
+    conversion_measure:
+      name: cart_purchases
+      source: fct_orders
+      measure:
+        type: count
+        column: cart_id
+    window: "1 day"
+    calculation: conversion_rate
+    dimensions:
+      - name: cart_date
+        type: time
+        grain: day
+      - name: cart_value_tier
+        type: categorical
+    meta:
+      inverse_metric: true  # Track non-conversion
+      alert_threshold: 0.7
+
+  # Multi-step funnel: View → Add to Cart → Purchase
+  - name: view_to_cart_conversion
+    description: "Product views that result in add to cart within same session"
+    type: conversion
+    label: "View → Cart Rate"
+    entity: product_session
+    base_measure:
+      name: product_views
+      source: fct_product_events
+      measure:
+        type: count
+        column: event_id
+        filters:
+          - "event_type = 'view'"
+    conversion_measure:
+      name: add_to_carts
+      source: fct_product_events
+      measure:
+        type: count
+        column: event_id
+        filters:
+          - "event_type = 'add_to_cart'"
+    window: "1 hour"  # Same session proxy
+    calculation: conversion_rate
+    dimensions:
+      - name: event_date
+        type: time
+        grain: day
+      - name: product_category
+        type: categorical
+      - name: price_tier
+        type: categorical
+
+  # Email campaign conversion
+  - name: email_click_to_purchase_rate
+    description: "Email clicks that result in a purchase within 3 days"
+    type: conversion
+    label: "Email → Purchase"
+    entity: user
+    base_measure:
+      name: email_clicks
+      source: fct_email_events
+      measure:
+        type: count
+        column: click_id
+    conversion_measure:
+      name: email_attributed_purchases
+      source: fct_orders
+      measure:
+        type: count
+        column: order_id
+        filters:
+          - "attribution_channel = 'email'"
+    window: "3 days"
+    calculation: conversion_rate
+    dimensions:
+      - name: email_send_date
+        type: time
+        grain: day
+      - name: campaign_type
+        type: categorical
+      - name: user_segment
+        type: categorical
+    meta:
+      channel: "email"
+      attribution_model: "last_click"

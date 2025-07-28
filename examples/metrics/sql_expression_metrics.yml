@@ -1,0 +1,165 @@
+# SQL expression examples for dbt-metrics-first
+# Demonstrates using SQL expressions in dimensions and entities
+
+version: 1
+metrics:
+  # Revenue by fiscal quarter with calculated dimension
+  - name: revenue_by_fiscal_quarter
+    description: "Revenue grouped by calculated fiscal quarter"
+    label: "Revenue (Fiscal)"
+    source: fct_orders
+    measure:
+      type: sum
+      column: order_total
+    dimensions:
+      - name: fiscal_quarter
+        type: categorical
+        # SQL expression to calculate fiscal quarter (April start)
+        expr: |
+          CASE 
+            WHEN EXTRACT(MONTH FROM order_date) BETWEEN 4 AND 6 THEN 'Q1'
+            WHEN EXTRACT(MONTH FROM order_date) BETWEEN 7 AND 9 THEN 'Q2'
+            WHEN EXTRACT(MONTH FROM order_date) BETWEEN 10 AND 12 THEN 'Q3'
+            ELSE 'Q4'
+          END || '-' || 
+          CASE 
+            WHEN EXTRACT(MONTH FROM order_date) >= 4 
+            THEN EXTRACT(YEAR FROM order_date)
+            ELSE EXTRACT(YEAR FROM order_date) - 1
+          END
+        label: "Fiscal Quarter"
+      - name: region
+        type: categorical
+
+  # Customer segmentation with composite entity key
+  - name: customer_revenue_by_segment
+    description: "Revenue by dynamic customer segment"
+    source: fct_orders
+    measure:
+      type: sum
+      column: order_total
+    dimensions:
+      - name: revenue_segment
+        type: categorical
+        # Dynamic segmentation based on order value
+        expr: |
+          CASE 
+            WHEN order_total < 100 THEN 'Small'
+            WHEN order_total < 1000 THEN 'Medium'
+            ELSE 'Large'
+          END
+        label: "Order Size"
+      - name: order_weekday
+        type: categorical
+        expr: "TO_CHAR(order_date, 'Day')"
+        label: "Day of Week"
+    entities:
+      - name: customer_location_key
+        type: foreign
+        # Composite key combining customer and location
+        expr: "customer_id || '-' || shipping_state"
+
+  # Time-based cohort analysis
+  - name: cohort_retention
+    description: "Customer retention by signup cohort"
+    source: fct_user_activity
+    measure:
+      type: count_distinct
+      column: user_id
+    dimensions:
+      - name: signup_cohort
+        type: categorical
+        expr: "DATE_TRUNC('month', signup_date)"
+        label: "Signup Month"
+      - name: months_since_signup
+        type: categorical
+        expr: |
+          DATEDIFF('month', signup_date, activity_date)
+        label: "Months Since Signup"
+
+  # Product performance with concatenated dimensions
+  - name: product_sales_performance
+    description: "Sales metrics by product hierarchy"
+    source: fct_sales
+    measure:
+      type: sum
+      column: sales_amount
+    dimensions:
+      - name: product_hierarchy
+        type: categorical
+        # Combine category and subcategory
+        expr: "category || ' > ' || subcategory"
+        label: "Product Hierarchy"
+      - name: price_tier
+        type: categorical
+        expr: |
+          CASE 
+            WHEN unit_price < 10 THEN 'Budget'
+            WHEN unit_price < 50 THEN 'Standard'
+            WHEN unit_price < 200 THEN 'Premium'
+            ELSE 'Luxury'
+          END
+        label: "Price Tier"
+      - name: sale_date
+        type: time
+        grain: day
+
+  # Geographic analysis with calculated regions
+  - name: sales_by_custom_region
+    description: "Sales grouped by custom geographic regions"
+    source: fct_orders
+    measure:
+      type: sum
+      column: order_total
+    dimensions:
+      - name: custom_region
+        type: categorical
+        expr: |
+          CASE 
+            WHEN state IN ('CA', 'OR', 'WA') THEN 'West Coast'
+            WHEN state IN ('NY', 'NJ', 'CT', 'MA') THEN 'Northeast'
+            WHEN state IN ('TX', 'FL', 'GA') THEN 'South'
+            WHEN state IN ('IL', 'MI', 'OH') THEN 'Midwest'
+            ELSE 'Other'
+          END
+        label: "Sales Region"
+      - name: is_urban
+        type: categorical
+        expr: "CASE WHEN population_density > 1000 THEN 'Urban' ELSE 'Rural' END"
+        label: "Urban/Rural"
+    entities:
+      - name: store_date_key
+        type: foreign
+        # Composite key for store and date
+        expr: "store_id || '_' || TO_CHAR(order_date, 'YYYYMMDD')"
+
+  # Customer lifetime metrics with calculated values
+  - name: customer_value_distribution
+    description: "Distribution of customer lifetime values"
+    source: fct_customer_summary
+    measure:
+      type: count
+      column: customer_id
+    dimensions:
+      - name: ltv_bucket
+        type: categorical
+        expr: |
+          WIDTH_BUCKET(
+            lifetime_value, 
+            0, 
+            10000, 
+            10
+          ) || '0%'
+        label: "LTV Percentile"
+      - name: customer_age_group
+        type: categorical
+        expr: |
+          CASE 
+            WHEN DATEDIFF('day', first_order_date, last_order_date) < 30 THEN 'New'
+            WHEN DATEDIFF('day', first_order_date, last_order_date) < 180 THEN 'Active'
+            WHEN DATEDIFF('day', first_order_date, last_order_date) < 365 THEN 'Established'
+            ELSE 'Loyal'
+          END
+        label: "Customer Age"
+    meta:
+      calculation_notes: "Uses WIDTH_BUCKET for percentile calculation"

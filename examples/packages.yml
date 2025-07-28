@@ -1,9 +1,9 @@
-# Example packages.yml for installing dbt-metrics-first-embedded
+# Example packages.yml for installing dbt-metrics-first
 
 packages:
-  # Install the embedded dbt-metrics-first package
+  # Install the dbt-metrics-first package
   # This provides zero-dependency metrics compilation
-  - git: "https://github.com/yourusername/dbt-metrics-first-embedded.git"
+  - git: "https://github.com/rdwburns/dbt-metrics-first.git"
     revision: v1.0.0
     
   # Optional: Other dbt packages you might use

@@ -1,0 +1,102 @@
+# Example cumulative metrics for dbt-metrics-first
+# Demonstrates various cumulative metric patterns
+
+version: 1
+metrics:
+  # Month-to-date revenue
+  - name: revenue_mtd
+    description: "Revenue accumulated from the start of the current month"
+    type: cumulative
+    measure:
+      name: daily_revenue
+      source: fct_orders
+      measure:
+        type: sum
+        column: order_total
+        filters:
+          - "order_status = 'completed'"
+    grain_to_date: month
+    dimensions:
+      - name: order_date
+        type: time
+        grain: day
+      - name: region
+        type: categorical
+    meta:
+      owner: "finance_team"
+      dashboard: "executive_dashboard"
+
+  # Rolling 7-day active users
+  - name: weekly_active_users
+    description: "Count of unique users active in the last 7 days"
+    type: cumulative
+    measure:
+      name: unique_users
+      source: fct_user_activity
+      measure:
+        type: count_distinct
+        column: user_id
+    window: "7 days"
+    dimensions:
+      - name: activity_date
+        type: time
+        grain: day
+      - name: user_segment
+        type: categorical
+
+  # All-time customer count
+  - name: total_customers_all_time
+    description: "Cumulative count of all customers ever acquired"
+    type: cumulative
+    measure:
+      name: new_customers
+      source: dim_customers
+      measure:
+        type: count_distinct
+        column: customer_id
+    # No window means accumulate over all time
+    dimensions:
+      - name: signup_date
+        type: time
+        grain: day
+      - name: acquisition_channel
+        type: categorical
+
+  # Quarter-to-date orders
+  - name: orders_qtd
+    description: "Total orders from the start of the current quarter"
+    type: cumulative
+    measure:
+      name: order_count
+      source: fct_orders
+      measure:
+        type: count
+        column: order_id
+    grain_to_date: quarter
+    dimensions:
+      - name: order_date
+        type: time
+        grain: day
+      - name: product_category
+        type: categorical
+
+  # Rolling 30-day revenue
+  - name: revenue_rolling_30d
+    description: "Total revenue over the last 30 days"
+    type: cumulative
+    measure:
+      name: revenue
+      source: fct_orders
+      measure:
+        type: sum
+        column: order_total
+    window: "30 days"
+    dimensions:
+      - name: order_date
+        type: time
+        grain: day
+      - name: customer_tier
+        type: categorical
+    meta:
+      refresh_frequency: "hourly"
+      business_area: "revenue"

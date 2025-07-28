@@ -61,7 +61,7 @@ metrics:
 
 ```yaml
 packages:
-  - git: "https://github.com/yourusername/dbt-metrics-first-embedded.git"
+  - git: "https://github.com/rdwburns/dbt-metrics-first.git"
     revision: v1.0.0
 ```
 
@@ -181,6 +181,144 @@ metrics:
     formula: "total_revenue / customer_count"
 ```
 
+#### Conversion Metrics
+```yaml
+metrics:
+  - name: visit_to_purchase_rate
+    description: "Conversion rate from visits to purchases"
+    type: conversion
+    label: "Visit to Purchase Rate"
+    entity: user
+    base_measure:
+      name: visits
+      source: fct_visits
+      measure:
+        type: count
+        column: visit_id
+    conversion_measure:
+      name: purchases
+      source: fct_orders
+      measure:
+        type: count
+        column: order_id
+    window: "7 days"
+    calculation: conversion_rate  # or 'conversions' for count
+```
+
+#### Cumulative Metrics
+```yaml
+metrics:
+  - name: revenue_mtd
+    description: "Month-to-date revenue"
+    type: cumulative
+    measure:
+      name: daily_revenue
+      source: fct_orders
+      measure:
+        type: sum
+        column: order_total
+    grain_to_date: month
+```
+
+### Advanced Parameters
+
+#### Period-over-Period Comparisons
+```yaml
+metrics:
+  - name: revenue_mom_growth
+    description: "Revenue compared to last month"
+    label: "Revenue MoM %"
+    source: fct_orders
+    measure:
+      type: sum
+      column: order_total
+    offset_window: "1 month"  # Compare to 1 month ago
+    fill_nulls_with: 0        # Replace nulls with 0
+```
+
+#### Null Handling
+```yaml
+metrics:
+  - name: conversion_rate
+    type: ratio
+    numerator:
+      name: conversions
+    denominator:
+      name: visits
+    fill_nulls_with: 0  # Options: 0, null, or any numeric value
+```
+
+#### Conversion with Constant Properties
+```yaml
+metrics:
+  - name: plan_upgrade_tracking
+    type: conversion
+    entity: user
+    base_measure:
+      name: signups
+    conversion_measure:
+      name: upgrades
+    constant_properties:  # Track properties that must remain constant
+      - base_property: initial_plan
+        conversion_property: upgraded_plan
+```
+
+#### Non-Additive Dimensions
+```yaml
+metrics:
+  - name: account_balance
+    description: "Current account balance"
+    source: fct_daily_balances
+    measure:
+      type: sum
+      column: balance_amount
+      # Prevents summing balances across time periods
+      non_additive_dimension:
+        name: balance_date        # Time dimension to restrict
+        window_choice: max        # Use 'max' for end-of-period, 'min' for start
+        window_groupings:         # Entities to group by
+          - account_id
+```
+
+Non-additive dimensions are crucial for:
+- **Financial metrics**: Account balances, portfolio values
+- **Subscription metrics**: MRR, customer counts
+- **Inventory metrics**: Stock levels, on-hand quantities
+- **Point-in-time metrics**: Headcount, active users
+
+### SQL Expressions
+
+#### Calculated Dimensions
+```yaml
+dimensions:
+  - name: fiscal_quarter
+    type: categorical
+    # SQL expression for custom calculations
+    expr: |
+      CASE 
+        WHEN EXTRACT(MONTH FROM order_date) BETWEEN 4 AND 6 THEN 'Q1'
+        WHEN EXTRACT(MONTH FROM order_date) BETWEEN 7 AND 9 THEN 'Q2'
+        WHEN EXTRACT(MONTH FROM order_date) BETWEEN 10 AND 12 THEN 'Q3'
+        ELSE 'Q4'
+      END
+    label: "Fiscal Quarter"
+```
+
+#### Composite Entity Keys
+```yaml
+entities:
+  - name: customer_location_key
+    type: foreign
+    # Combine multiple columns into a single key
+    expr: "customer_id || '-' || shipping_state"
+```
+
+SQL expressions enable:
+- **Calculated fields**: Date parts, string manipulation, case logic
+- **Composite keys**: Combining multiple columns
+- **Dynamic segmentation**: Bucketing, cohort definitions
+- **Custom business logic**: Fiscal calendars, regional groupings
+
 ### Available Measure Types
 
 - `sum`: Sum of column values
@@ -289,7 +427,7 @@ The embedded package uses dbt's Python model capabilities to provide full compil
 ## 📁 File Structure
 
 ```
-dbt-metrics-first-embedded/
+dbt-metrics-first/
 ├── dbt_project.yml          # Package configuration
 ├── models/
 │   └── metrics_first_embedded_compiler.py  # Embedded Python compiler
@@ -374,13 +512,13 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 ## 🔗 Related Projects
 
 - **[Metrics-First-DBT CLI](https://pypi.org/project/metrics-first-dbt/)**: Full-featured CLI tool
-- **[dbt-metrics-first](https://github.com/yourusername/dbt-metrics-first)**: Full dbt package with CLI integration
+- **[dbt-metrics-first CLI](https://github.com/rdwburns/dbt-metrics-first-cli)**: Full dbt package with CLI integration
 - **[dbt Semantic Layer](https://docs.getdbt.com/docs/build/semantic-models)**: Official dbt semantic layer docs
 
 ## 🆘 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/dbt-metrics-first-embedded/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/dbt-metrics-first-embedded/discussions)
+- **Issues**: [GitHub Issues](https://github.com/rdwburns/dbt-metrics-first/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/rdwburns/dbt-metrics-first/discussions)
 
 ---
 

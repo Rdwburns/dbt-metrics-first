@@ -1,8 +1,8 @@
-# dbt-metrics-first-embedded
+# dbt-metrics-first
 # A standalone dbt package for metrics-first semantic model development
 # Uses embedded Python compilation - no external dependencies required!
 
-name: 'dbt_metrics_first_embedded'
+name: 'dbt_metrics_first'
 version: '1.0.0'
 config-version: 2
 

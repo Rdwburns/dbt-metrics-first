@@ -6,12 +6,16 @@ version: 1
 metrics:
   - name: total_revenue
     description: "Total revenue from completed orders"
+    label: "Total Revenue"
     source: fct_orders
     measure:
       type: sum
       column: order_total
       filters:
         - "order_status = 'completed'"
+    # Metric-level filter (applies to all queries of this metric)
+    filter: |
+      {{ Dimension('order_date__day') }} >= '2024-01-01'
     dimensions:
       - name: order_date
         type: time
@@ -23,12 +27,17 @@ metrics:
     entities:
       - name: customer_id
         type: foreign
+    # Config block for dbt-specific settings
+    config:
+      enabled: true
+      group: "revenue_metrics"
     meta:
       owner: "finance_team"
       tier: "gold"
 
   - name: average_order_value
     description: "Average value per order"
+    label: "AOV"
     source: fct_orders
     measure:
       type: avg
@@ -41,6 +50,9 @@ metrics:
         grain: day
       - name: customer_segment
         type: categorical
+    config:
+      enabled: true
+      group: "revenue_metrics"
     meta:
       owner: "analytics_team"
       tier: "silver"
