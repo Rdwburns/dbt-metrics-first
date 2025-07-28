@@ -243,7 +243,7 @@ class MetricsCompiler:
                             'type': 'time' if 'date' in dim_name.lower() else 'categorical'
                         }
                         if dim_dict['type'] == 'time':
-                            dim_dict['time_granularity'] = 'day'
+                            dim_dict['type_params'] = {'time_granularity': 'day'}
                     else:
                         # New format: dimension as dictionary
                         dim_name = dim['name']
@@ -252,7 +252,7 @@ class MetricsCompiler:
                             'type': dim.get('type', 'categorical')
                         }
                         if dim_dict['type'] == 'time':
-                            dim_dict['time_granularity'] = dim.get('grain', 'day')
+                            dim_dict['type_params'] = {'time_granularity': dim.get('grain', 'day')}
                         
                         # Add optional fields
                         if 'expr' in dim:
@@ -367,18 +367,11 @@ class MetricsCompiler:
                         measures.append(cum_measure)
                         seen_measures.add(cum_measure_name)
         
-        # Build the semantic model - separate time and categorical dimensions
-        time_dims = [d for d in dimensions if d.get('type') == 'time']
-        cat_dims = [d for d in dimensions if d.get('type') != 'time']
-        
-        # Clean up categorical dimensions (remove None time_granularity)
-        for dim in cat_dims:
-            dim.pop('time_granularity', None)
-        
+        # Build the semantic model
         semantic_model = {
             'name': model_name,
             'model': f"ref('{source}')",
-            'dimensions': cat_dims + time_dims,
+            'dimensions': dimensions,
             'entities': entities,
             'measures': measures
         }
@@ -513,7 +506,11 @@ class MetricsCompiler:
         relative_path = None
         for input_dir in self.input_directories:
             try:
-                relative_path = input_file.relative_to(input_dir)
+                input_dir_path = Path(input_dir).resolve()
+                input_file_resolved = input_file.resolve()
+                relative_path = input_file_resolved.relative_to(input_dir_path)
+                if self.verbose:
+                    self.log(f"Found relative path: {relative_path} from base: {input_dir}", "info")
                 break
             except ValueError:
                 continue
@@ -521,6 +518,8 @@ class MetricsCompiler:
         if relative_path and len(relative_path.parts) > 1:
             # Maintain directory structure
             output_file = relative_path.parent / f"{base_name}_semantic_models.yml"
+            if self.verbose:
+                self.log(f"Preserving structure: {output_file}", "info")
         else:
             output_file = Path(f"{base_name}_semantic_models.yml")
         
