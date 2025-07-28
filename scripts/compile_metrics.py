@@ -101,7 +101,7 @@ class MetricsCompiler:
                     self._validate_metrics_schema(data, file_path)
                 
                 # Compile to semantic models
-                semantic_models = self._compile_to_semantic_models(data)
+                semantic_models = self._compile_to_semantic_models(data, file_path)
                 
                 # Write output
                 output_path = self._get_output_path(file_path)
@@ -185,7 +185,7 @@ class MetricsCompiler:
                 if 'percentile' not in metric['measure']['agg_params']:
                     raise ValueError(f"Metric '{metric['name']}' with type 'percentile' requires 'agg_params.percentile'")
     
-    def _compile_to_semantic_models(self, data: Dict) -> Dict:
+    def _compile_to_semantic_models(self, data: Dict, file_path: str = None) -> Dict:
         """Compile metrics-first data to dbt semantic models."""
         
         semantic_models = []
@@ -201,7 +201,7 @@ class MetricsCompiler:
         
         # Generate semantic models for each source
         for source, source_metrics in metrics_by_source.items():
-            semantic_model = self._build_semantic_model(source, source_metrics)
+            semantic_model = self._build_semantic_model(source, source_metrics, file_path)
             semantic_models.append(semantic_model)
             
             # Generate metrics definitions
@@ -215,10 +215,16 @@ class MetricsCompiler:
             'metrics': metrics
         }
     
-    def _build_semantic_model(self, source: str, metrics: List[Dict]) -> Dict:
+    def _build_semantic_model(self, source: str, metrics: List[Dict], file_path: str = None) -> Dict:
         """Build a semantic model from a source and its metrics."""
         
-        model_name = f"{source}_semantic_model"
+        # Create unique model name using file basename if provided
+        # This prevents duplicates when same source is used in multiple files
+        if file_path:
+            file_basename = Path(file_path).stem
+            model_name = f"{source}_{file_basename}_semantic_model"
+        else:
+            model_name = f"{source}_semantic_model"
         
         # Collect all dimensions and entities from metrics
         dimensions = []
