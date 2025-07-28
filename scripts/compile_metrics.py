@@ -19,6 +19,22 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 
 
+# Custom YAML representers for better formatting
+def str_presenter(dumper, data):
+    """Custom string presenter that handles multiline strings properly."""
+    if len(data.splitlines()) > 1:  # check for multiline string
+        return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
+    return dumper.represent_scalar('tag:yaml.org,2002:str', data)
+
+
+def setup_yaml():
+    """Setup custom YAML formatting."""
+    yaml.add_representer(str, str_presenter)
+    # Prevent unicode escape sequences
+    yaml.SafeDumper.yaml_representers[None] = lambda self, data: \
+        self.represent_str(str(data))
+
+
 # Supported aggregation types in dbt semantic layer
 SUPPORTED_AGGREGATIONS = [
     'sum', 'count', 'count_distinct', 'avg', 'min', 'max',
@@ -37,6 +53,7 @@ class MetricsCompiler:
         self.output_directory = output_directory
         self.validate_schema = validate_schema
         self.verbose = verbose
+        setup_yaml()
         
     def log(self, message: str, level: str = "info"):
         """Log a message if verbose mode is enabled."""
@@ -214,38 +231,50 @@ class MetricsCompiler:
         seen_measures = set()
         
         for metric in metrics:
-            # Add dimensions
-            for dim in metric.get('dimensions', []):
-                dim_name = dim['name']
-                if dim_name not in seen_dimensions:
-                    dimension_def = {
-                        'name': dim_name,
-                        'type': dim.get('type', 'categorical'),
-                        'time_granularity': dim.get('grain', 'day') if dim.get('type') == 'time' else None
-                    }
+            # Handle dimensions - support both old string format and new dict format
+            if 'dimensions' in metric:
+                dims = metric['dimensions']
+                for dim in dims:
+                    if isinstance(dim, str):
+                        # Old format: just dimension name as string
+                        dim_name = dim
+                        dim_dict = {
+                            'name': dim_name,
+                            'type': 'time' if 'date' in dim_name.lower() else 'categorical'
+                        }
+                        if dim_dict['type'] == 'time':
+                            dim_dict['time_granularity'] = 'day'
+                    else:
+                        # New format: dimension as dictionary
+                        dim_name = dim['name']
+                        dim_dict = {
+                            'name': dim_name,
+                            'type': dim.get('type', 'categorical')
+                        }
+                        if dim_dict['type'] == 'time':
+                            dim_dict['time_granularity'] = dim.get('grain', 'day')
+                        
+                        # Add optional fields
+                        if 'expr' in dim:
+                            dim_dict['expr'] = dim['expr']
+                        if 'label' in dim:
+                            dim_dict['label'] = dim['label']
                     
-                    # Add expr if provided
-                    if 'expr' in dim:
-                        dimension_def['expr'] = dim['expr']
-                    
-                    # Add label if provided
-                    if 'label' in dim:
-                        dimension_def['label'] = dim['label']
-                    
-                    dimensions.append(dimension_def)
-                    seen_dimensions.add(dim_name)
+                    if dim_name not in seen_dimensions:
+                        dimensions.append(dim_dict)
+                        seen_dimensions.add(dim_name)
             
             # Add entities
             for entity in metric.get('entities', []):
-                entity_name = entity['name']
+                entity_name = entity['name'] if isinstance(entity, dict) else entity
                 if entity_name not in seen_entities:
                     entity_def = {
                         'name': entity_name,
-                        'type': entity.get('type', 'primary')
+                        'type': entity.get('type', 'primary') if isinstance(entity, dict) else 'primary'
                     }
                     
                     # Add expr if provided (for composite keys)
-                    if 'expr' in entity:
+                    if isinstance(entity, dict) and 'expr' in entity:
                         entity_def['expr'] = entity['expr']
                     
                     entities.append(entity_def)
@@ -338,20 +367,21 @@ class MetricsCompiler:
                         measures.append(cum_measure)
                         seen_measures.add(cum_measure_name)
         
-        # Build the semantic model
+        # Build the semantic model - separate time and categorical dimensions
+        time_dims = [d for d in dimensions if d.get('type') == 'time']
+        cat_dims = [d for d in dimensions if d.get('type') != 'time']
+        
+        # Clean up categorical dimensions (remove None time_granularity)
+        for dim in cat_dims:
+            dim.pop('time_granularity', None)
+        
         semantic_model = {
             'name': model_name,
             'model': f"ref('{source}')",
-            'dimensions': [d for d in dimensions if d['time_granularity'] is None] + 
-                         [d for d in dimensions if d['time_granularity'] is not None],
+            'dimensions': cat_dims + time_dims,
             'entities': entities,
             'measures': measures
         }
-        
-        # Remove None values from time dimensions
-        for dim in semantic_model['dimensions']:
-            if dim.get('time_granularity') is None:
-                dim.pop('time_granularity', None)
         
         return semantic_model
     
@@ -372,7 +402,15 @@ class MetricsCompiler:
             base_metric['label'] = metric['label']
         
         if 'filter' in metric:
-            base_metric['filter'] = metric['filter']
+            # Parse filter to ensure it has proper field name
+            filter_str = metric['filter']
+            # If filter doesn't contain a field name, try to infer it
+            if not any(op in filter_str for op in ['=', '>', '<', '!=', 'IN', 'LIKE']):
+                # Assume it's missing the field name, warn the user
+                if filter_str.startswith("'"):
+                    # Likely a value without field
+                    self.log(f"Warning: Filter '{filter_str}' in metric '{metric['name']}' may be missing field name", "warning")
+            base_metric['filter'] = filter_str
         
         if 'config' in metric:
             base_metric['config'] = metric['config']
@@ -471,7 +509,21 @@ class MetricsCompiler:
         input_file = Path(input_path)
         base_name = input_file.stem
         
-        output_file = f"{base_name}_semantic_models.yml"
+        # Preserve subdirectory structure if needed
+        relative_path = None
+        for input_dir in self.input_directories:
+            try:
+                relative_path = input_file.relative_to(input_dir)
+                break
+            except ValueError:
+                continue
+        
+        if relative_path and len(relative_path.parts) > 1:
+            # Maintain directory structure
+            output_file = relative_path.parent / f"{base_name}_semantic_models.yml"
+        else:
+            output_file = Path(f"{base_name}_semantic_models.yml")
+        
         output_path = Path(self.output_directory) / output_file
         
         # Ensure output directory exists
@@ -480,10 +532,15 @@ class MetricsCompiler:
         return str(output_path)
     
     def _write_semantic_models(self, semantic_models: Dict, output_path: str):
-        """Write compiled semantic models to output file."""
+        """Write compiled semantic models to output file with proper formatting."""
         
         with open(output_path, 'w', encoding='utf-8') as f:
-            yaml.dump(semantic_models, f, default_flow_style=False, sort_keys=False)
+            yaml.dump(semantic_models, f, 
+                     default_flow_style=False, 
+                     sort_keys=False,
+                     width=1000,  # Prevent line wrapping
+                     allow_unicode=True,  # Properly handle unicode characters
+                     encoding='utf-8')
         
         self.log(f"Written compiled models to {output_path}", "success")
 
