@@ -335,7 +335,9 @@ class MetricsCompiler:
             if metric_type == 'ratio':
                 # Add numerator measure
                 if 'numerator' in metric and 'measure' in metric['numerator']:
-                    num_measure_name = f"{metric['numerator']['name']}_measure"
+                    # Use numerator name if provided, otherwise derive from metric name
+                    num_name = metric['numerator'].get('name', f"{metric['name']}_numerator")
+                    num_measure_name = f"{num_name}_measure"
                     if num_measure_name not in seen_measures:
                         # Get aggregation type and map aliases
                         agg_type = metric['numerator']['measure'].get('type', 'sum')
@@ -345,7 +347,7 @@ class MetricsCompiler:
                         num_measure = {
                             'name': num_measure_name,
                             'agg': agg_type,
-                            'expr': metric['numerator']['measure'].get('column', metric['numerator']['name'])
+                            'expr': metric['numerator']['measure'].get('column', num_name)
                         }
                         if 'agg_params' in metric['numerator']['measure']:
                             num_measure['agg_params'] = metric['numerator']['measure']['agg_params']
@@ -359,7 +361,9 @@ class MetricsCompiler:
                 
                 # Add denominator measure
                 if 'denominator' in metric and 'measure' in metric['denominator']:
-                    den_measure_name = f"{metric['denominator']['name']}_measure"
+                    # Use denominator name if provided, otherwise derive from metric name
+                    den_name = metric['denominator'].get('name', f"{metric['name']}_denominator")
+                    den_measure_name = f"{den_name}_measure"
                     if den_measure_name not in seen_measures:
                         # Get aggregation type and map aliases
                         agg_type = metric['denominator']['measure'].get('type', 'sum')
@@ -369,7 +373,7 @@ class MetricsCompiler:
                         den_measure = {
                             'name': den_measure_name,
                             'agg': agg_type,
-                            'expr': metric['denominator']['measure'].get('column', metric['denominator']['name'])
+                            'expr': metric['denominator']['measure'].get('column', den_name)
                         }
                         if 'agg_params' in metric['denominator']['measure']:
                             den_measure['agg_params'] = metric['denominator']['measure']['agg_params']
@@ -384,7 +388,9 @@ class MetricsCompiler:
             # Handle measures for cumulative metrics
             elif metric_type == 'cumulative':
                 if 'measure' in metric and 'measure' in metric['measure']:
-                    cum_measure_name = f"{metric['measure']['name']}_measure"
+                    # Use measure name if provided, otherwise derive from metric name
+                    cum_name = metric['measure'].get('name', f"{metric['name']}_cumulative")
+                    cum_measure_name = f"{cum_name}_measure"
                     if cum_measure_name not in seen_measures:
                         # Get aggregation type and map aliases
                         agg_type = metric['measure']['measure'].get('type', 'sum')
@@ -394,7 +400,7 @@ class MetricsCompiler:
                         cum_measure = {
                             'name': cum_measure_name,
                             'agg': agg_type,
-                            'expr': metric['measure']['measure'].get('column', metric['measure']['name'])
+                            'expr': metric['measure']['measure'].get('column', cum_name)
                         }
                         if 'agg_params' in metric['measure']['measure']:
                             cum_measure['agg_params'] = metric['measure']['measure']['agg_params']
@@ -463,9 +469,12 @@ class MetricsCompiler:
             return base_metric
         
         elif metric_type == 'ratio':
+            # Use numerator/denominator names if provided, otherwise derive from metric name
+            num_name = metric['numerator'].get('name', f"{metric['name']}_numerator") if 'numerator' in metric else f"{metric['name']}_numerator"
+            den_name = metric['denominator'].get('name', f"{metric['name']}_denominator") if 'denominator' in metric else f"{metric['name']}_denominator"
             base_metric['type_params'] = {
-                'numerator': f"{metric['numerator']['name']}_measure",
-                'denominator': f"{metric['denominator']['name']}_measure"
+                'numerator': f"{num_name}_measure",
+                'denominator': f"{den_name}_measure"
             }
             return base_metric
         
@@ -485,14 +494,16 @@ class MetricsCompiler:
             
             # Add base measure
             if 'base_measure' in metric:
+                base_name = metric['base_measure'].get('name', f"{metric['name']}_base")
                 conversion_params['conversion_type_params']['base_measure'] = {
-                    'name': f"{metric['base_measure']['name']}_measure"
+                    'name': f"{base_name}_measure"
                 }
             
             # Add conversion measure
             if 'conversion_measure' in metric:
+                conv_name = metric['conversion_measure'].get('name', f"{metric['name']}_conversion")
                 conversion_params['conversion_type_params']['conversion_measure'] = {
-                    'name': f"{metric['conversion_measure']['name']}_measure"
+                    'name': f"{conv_name}_measure"
                 }
             
             # Add optional window
@@ -512,8 +523,10 @@ class MetricsCompiler:
         
         elif metric_type == 'cumulative':
             # Build cumulative metric
+            # Use measure name if provided, otherwise derive from metric name
+            cum_name = metric['measure'].get('name', f"{metric['name']}_cumulative") if 'measure' in metric else f"{metric['name']}_cumulative"
             cumulative_params = {
-                'measure': f"{metric['measure']['name']}_measure"
+                'measure': f"{cum_name}_measure"
             }
             
             # Add optional window

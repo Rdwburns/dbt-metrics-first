@@ -1,0 +1,108 @@
+# Example ratio metrics without explicit names in numerator/denominator
+version: 1
+
+metrics:
+  - name: conversion_rate
+    description: "Conversion rate from sessions to orders"
+    type: ratio
+    label: "Conversion Rate %"
+    numerator:
+      source: fct_orders
+      measure:
+        type: count_distinct
+        column: session_id
+        filters:
+          - "order_status = 'completed'"
+    denominator:
+      source: fct_sessions
+      measure:
+        type: count
+        column: session_id
+    dimensions:
+      - name: session_date
+        type: time
+        grain: day
+      - name: traffic_source
+        type: categorical
+    fill_nulls_with: 0
+    meta:
+      owner: "marketing_team"
+      tier: "gold"
+
+  - name: average_items_per_order
+    description: "Average number of items per order"
+    type: ratio
+    label: "Items per Order"
+    numerator:
+      source: fct_order_items
+      measure:
+        type: count
+        column: item_id
+    denominator:
+      source: fct_orders
+      measure:
+        type: count_distinct
+        column: order_id
+    dimensions:
+      - name: order_month
+        type: time
+        grain: month
+      - name: product_category
+        type: categorical
+    meta:
+      owner: "product_team"
+
+  - name: gross_margin_rate
+    description: "Gross margin as percentage of revenue"
+    type: ratio
+    label: "Gross Margin %"
+    numerator:
+      source: fct_orders
+      measure:
+        type: sum
+        column: gross_profit
+    denominator:
+      source: fct_orders
+      measure:
+        type: sum
+        column: revenue
+    dimensions:
+      - name: order_date
+        type: time
+        grain: day
+      - name: product_line
+        type: categorical
+    fill_nulls_with: 0
+    meta:
+      owner: "finance_team"
+      tier: "gold"
+
+  # Example with explicit names (for backward compatibility)
+  - name: click_through_rate
+    description: "Click-through rate from impressions to clicks"
+    type: ratio
+    label: "CTR %"
+    numerator:
+      name: ad_clicks
+      source: fct_ad_events
+      measure:
+        type: count
+        column: event_id
+        filters:
+          - "event_type = 'click'"
+    denominator:
+      name: ad_impressions
+      source: fct_ad_events
+      measure:
+        type: count
+        column: event_id
+        filters:
+          - "event_type = 'impression'"
+    dimensions:
+      - name: event_date
+        type: time
+        grain: day
+      - name: campaign_id
+        type: categorical
+    meta:
+      owner: "advertising_team"
